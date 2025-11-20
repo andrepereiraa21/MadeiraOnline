@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Marketplace Premium - Compre e Venda com Segurança",
-  description: "Plataforma moderna de anúncios com moderação por IA",
+  title: "MADEIRAONLINE - Compre e Venda na Madeira",
+  description: "Plataforma de anúncios da Madeira com moderação por IA. Encontre veículos, imóveis e muito mais.",
 };
 
 export default function RootLayout({

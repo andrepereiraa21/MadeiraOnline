@@ -70,9 +70,43 @@ export function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent"
+            className="flex items-center gap-3 text-2xl font-bold"
           >
-            🏪 MarketPlace
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 40 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="drop-shadow-lg"
+            >
+              <rect width="40" height="40" rx="8" fill="url(#gradient)" />
+              <path
+                d="M12 28V15L20 10L28 15V28H24V20H16V28H12Z"
+                fill="white"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="20" cy="16" r="2" fill="#10B981" />
+              <defs>
+                <linearGradient
+                  id="gradient"
+                  x1="0"
+                  y1="0"
+                  x2="40"
+                  y2="40"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stopColor="#10B981" />
+                  <stop offset="1" stopColor="#14B8A6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              MADEIRAONLINE
+            </span>
           </Link>
 
           {/* Desktop Menu */}
@@ -116,14 +150,17 @@ export function Navbar() {
                 </Link>
 
                 <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                  <div className="flex items-center gap-2">
+                  <Link
+                    href={`/perfil/${user.id}`}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
                     <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {profile?.nome?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
                     </div>
                     <span className="text-sm font-medium text-gray-700">
                       {profile?.nome || user.email?.split("@")[0]}
                     </span>
-                  </div>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="text-gray-600 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50"
@@ -210,7 +247,11 @@ export function Navbar() {
                   </Link>
 
                   <div className="px-4 py-3 border-t border-gray-200 mt-2">
-                    <div className="flex items-center gap-2 mb-3">
+                    <Link
+                      href={`/perfil/${user.id}`}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 mb-3"
+                    >
                       <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold">
                         {profile?.nome?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
                       </div>
@@ -220,7 +261,7 @@ export function Navbar() {
                         </p>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </div>
-                    </div>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors font-medium"

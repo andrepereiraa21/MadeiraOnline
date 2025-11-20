@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Upload, X, Loader2 } from "lucide-react";
 import type { Categoria, DetalhesVeiculo } from "@/lib/types";
+import { marcasVeiculos, modelosPorMarca, anosDisponiveis } from "@/lib/veiculos-data";
 
 export default function CriarAnuncioPage() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function CriarAnuncioPage() {
   const [detalhes, setDetalhes] = useState<any>({});
   const [fotos, setFotos] = useState<string[]>([]);
   const [fotosFiles, setFotosFiles] = useState<File[]>([]);
+  const [marcaSelecionada, setMarcaSelecionada] = useState("");
+  const [precoSlider, setPrecoSlider] = useState(5000);
 
   useEffect(() => {
     checkUser();
@@ -106,19 +109,28 @@ export default function CriarAnuncioPage() {
     setLoading(true);
 
     try {
+      // Validação básica
+      if (!formData.titulo || !formData.descricao || !formData.preco || !formData.categoria) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        setLoading(false);
+        return;
+      }
+
       // Moderar conteúdo
       const textoCompleto = `${formData.titulo} ${formData.descricao}`;
       const moderacao = await moderarConteudo(textoCompleto);
 
       // Upload das fotos
       const fotosUrls: string[] = [];
-      for (let i = 0; i < fotosFiles.length; i++) {
-        const url = await uploadToSupabase(fotosFiles[i], i);
-        fotosUrls.push(url);
+      if (fotosFiles.length > 0) {
+        for (let i = 0; i < fotosFiles.length; i++) {
+          const url = await uploadToSupabase(fotosFiles[i], i);
+          fotosUrls.push(url);
+        }
       }
 
       // Criar anúncio
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('anuncios')
         .insert({
           usuario_id: user.id,
@@ -126,52 +138,86 @@ export default function CriarAnuncioPage() {
           descricao: formData.descricao,
           preco: parseFloat(formData.preco),
           categoria: formData.categoria,
-          tipo_produto: formData.tipo_produto,
+          tipo_produto: formData.tipo_produto || formData.categoria,
           fotos: fotosUrls,
           detalhes: detalhes,
           moderacao_status: moderacao.aprovado ? 'aprovado' : 'rejeitado',
-          moderacao_feedback: moderacao.feedback,
-        });
+          moderacao_feedback: moderacao.feedback || null,
+          status: 'ativo',
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao criar anúncio:', error);
+        throw error;
+      }
 
       if (moderacao.aprovado) {
         alert('✅ Anúncio criado com sucesso!');
         router.push('/');
+        router.refresh();
       } else {
         alert(`⚠️ ${moderacao.feedback}`);
         setLoading(false);
       }
     } catch (error: any) {
-      alert('Erro ao criar anúncio: ' + error.message);
+      console.error('Erro completo:', error);
+      alert('Erro ao criar anúncio: ' + (error.message || 'Erro desconhecido'));
       setLoading(false);
     }
   };
 
   const renderDetalhesForm = () => {
     if (formData.categoria === 'veiculos') {
+      const modelosDisponiveis = marcaSelecionada ? modelosPorMarca[marcaSelecionada] || [] : [];
+
       return (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-800">Detalhes do Veículo</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Marca"
+            <select
               className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              onChange={(e) => setDetalhes({ ...detalhes, marca: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Modelo"
+              value={marcaSelecionada}
+              onChange={(e) => {
+                setMarcaSelecionada(e.target.value);
+                setDetalhes({ ...detalhes, marca: e.target.value, modelo: '' });
+              }}
+            >
+              <option value="">Selecione a Marca</option>
+              {marcasVeiculos.map((marca) => (
+                <option key={marca} value={marca}>
+                  {marca}
+                </option>
+              ))}
+            </select>
+            
+            <select
               className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              value={detalhes.modelo || ''}
               onChange={(e) => setDetalhes({ ...detalhes, modelo: e.target.value })}
-            />
-            <input
-              type="number"
-              placeholder="Ano"
+              disabled={!marcaSelecionada}
+            >
+              <option value="">Selecione o Modelo</option>
+              {modelosDisponiveis.map((modelo) => (
+                <option key={modelo} value={modelo}>
+                  {modelo}
+                </option>
+              ))}
+            </select>
+            
+            <select
               className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              value={detalhes.ano || ''}
               onChange={(e) => setDetalhes({ ...detalhes, ano: parseInt(e.target.value) })}
-            />
+            >
+              <option value="">Selecione o Ano</option>
+              {anosDisponiveis.map((ano) => (
+                <option key={ano} value={ano}>
+                  {ano}
+                </option>
+              ))}
+            </select>
+            
             <input
               type="number"
               placeholder="Quilômetros"
@@ -299,20 +345,48 @@ export default function CriarAnuncioPage() {
             {/* Detalhes específicos por categoria */}
             {renderDetalhesForm()}
 
-            {/* Preço */}
+            {/* Preço com Slider */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Preço (€) *
               </label>
-              <input
-                type="number"
-                required
-                step="0.01"
-                value={formData.preco}
-                onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="0.00"
-              />
+              <div className="space-y-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="5000000"
+                  step="1000"
+                  value={precoSlider}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setPrecoSlider(parseInt(valor));
+                    setFormData({ ...formData, preco: valor });
+                  }}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">€0</span>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-emerald-600">
+                      €{precoSlider.toLocaleString('pt-PT')}
+                    </div>
+                    <input
+                      type="number"
+                      required
+                      step="0.01"
+                      value={formData.preco}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+                        setFormData({ ...formData, preco: valor });
+                        setPrecoSlider(parseFloat(valor) || 0);
+                      }}
+                      className="mt-2 w-40 px-3 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="Valor exato"
+                    />
+                  </div>
+                  <span className="text-sm text-gray-500">€5.000.000</span>
+                </div>
+              </div>
             </div>
 
             {/* Descrição */}
