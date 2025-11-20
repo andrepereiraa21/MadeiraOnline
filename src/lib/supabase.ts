@@ -13,92 +13,118 @@ export type Database = {
         Row: {
           id: string
           email: string
-          full_name: string | null
+          nome: string | null
+          telefone: string | null
           avatar_url: string | null
           created_at: string
         }
         Insert: {
           id: string
           email: string
-          full_name?: string | null
+          nome?: string | null
+          telefone?: string | null
           avatar_url?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           email?: string
-          full_name?: string | null
+          nome?: string | null
+          telefone?: string | null
           avatar_url?: string | null
           created_at?: string
         }
       }
-      listings: {
+      anuncios: {
         Row: {
           id: string
-          user_id: string
-          title: string
-          description: string
-          price: number
-          category: string
-          images: string[]
-          details: Record<string, any>
-          status: 'pending' | 'approved' | 'rejected'
+          usuario_id: string
+          titulo: string
+          descricao: string
+          preco: number
+          categoria: string
+          fotos: string[]
+          detalhes: Record<string, any>
+          status: 'ativo' | 'vendido' | 'inativo'
+          moderacao_status: 'pendente' | 'aprovado' | 'rejeitado'
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
-          user_id: string
-          title: string
-          description: string
-          price: number
-          category: string
-          images?: string[]
-          details?: Record<string, any>
-          status?: 'pending' | 'approved' | 'rejected'
+          usuario_id: string
+          titulo: string
+          descricao: string
+          preco: number
+          categoria: string
+          fotos?: string[]
+          detalhes?: Record<string, any>
+          status?: 'ativo' | 'vendido' | 'inativo'
+          moderacao_status?: 'pendente' | 'aprovado' | 'rejeitado'
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
-          user_id?: string
-          title?: string
-          description?: string
-          price?: number
-          category?: string
-          images?: string[]
-          details?: Record<string, any>
-          status?: 'pending' | 'approved' | 'rejected'
+          usuario_id?: string
+          titulo?: string
+          descricao?: string
+          preco?: number
+          categoria?: string
+          fotos?: string[]
+          detalhes?: Record<string, any>
+          status?: 'ativo' | 'vendido' | 'inativo'
+          moderacao_status?: 'pendente' | 'aprovado' | 'rejeitado'
           created_at?: string
           updated_at?: string
         }
       }
-      messages: {
+      conversas: {
         Row: {
           id: string
-          listing_id: string
-          sender_id: string
-          receiver_id: string
-          content: string
-          read: boolean
+          anuncio_id: string
+          comprador_id: string
+          vendedor_id: string
           created_at: string
         }
         Insert: {
           id?: string
-          listing_id: string
-          sender_id: string
-          receiver_id: string
-          content: string
-          read?: boolean
+          anuncio_id: string
+          comprador_id: string
+          vendedor_id: string
           created_at?: string
         }
         Update: {
           id?: string
-          listing_id?: string
-          sender_id?: string
-          receiver_id?: string
-          content?: string
-          read?: boolean
+          anuncio_id?: string
+          comprador_id?: string
+          vendedor_id?: string
+          created_at?: string
+        }
+      }
+      mensagens: {
+        Row: {
+          id: string
+          conversa_id: string
+          remetente_id: string
+          conteudo: string
+          lida: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversa_id: string
+          remetente_id: string
+          conteudo: string
+          lida?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversa_id?: string
+          remetente_id?: string
+          conteudo?: string
+          lida?: boolean
           created_at?: string
         }
       }

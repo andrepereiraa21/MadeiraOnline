@@ -27,16 +27,15 @@ export default function HomePage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('anuncios')
-      .select(`
-        *,
-        profile:profiles(nome, avatar_url)
-      `)
-      .eq('moderacao_status', 'aprovado')
+      .select('*')
       .eq('status', 'ativo')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
+      console.log('Anúncios carregados:', data);
       setAnuncios(data);
+    } else {
+      console.error('Erro ao carregar anúncios:', error);
     }
     setLoading(false);
   };
@@ -167,7 +166,7 @@ export default function HomePage() {
                       <span className="text-4xl">📦</span>
                     </div>
                   )}
-                  <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
                     {anuncio.categoria}
                   </div>
                 </div>
@@ -190,14 +189,27 @@ export default function HomePage() {
                   </p>
 
                   {/* Detalhes específicos */}
-                  {anuncio.categoria === 'veiculos' && anuncio.detalhes?.quilometros && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                      <MapPin className="w-3 h-3" />
-                      <span>{anuncio.detalhes.quilometros.toLocaleString()} km</span>
-                      {anuncio.detalhes.combustivel && (
+                  {anuncio.categoria === 'veiculos' && anuncio.detalhes && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
+                      {anuncio.detalhes.marca && (
+                        <span className="font-medium">{anuncio.detalhes.marca}</span>
+                      )}
+                      {anuncio.detalhes.modelo && (
                         <>
                           <span>•</span>
-                          <span className="capitalize">{anuncio.detalhes.combustivel}</span>
+                          <span>{anuncio.detalhes.modelo}</span>
+                        </>
+                      )}
+                      {anuncio.detalhes.ano && (
+                        <>
+                          <span>•</span>
+                          <span>{anuncio.detalhes.ano}</span>
+                        </>
+                      )}
+                      {anuncio.detalhes.quilometros && (
+                        <>
+                          <span>•</span>
+                          <span>{anuncio.detalhes.quilometros.toLocaleString()} km</span>
                         </>
                       )}
                     </div>

@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Menu, X, Plus, MessageCircle, User, LogOut, Home } from "lucide-react";
+import { Menu, X, Plus, MessageCircle, User, LogOut, Home, LayoutDashboard } from "lucide-react";
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [userName, setUserName] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -20,10 +20,10 @@ export function Navbar() {
       (event, session) => {
         if (event === "SIGNED_IN") {
           setUser(session?.user);
-          fetchProfile(session?.user?.id);
+          fetchUserName(session?.user?.id);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
-          setProfile(null);
+          setUserName("");
         }
       }
     );
@@ -39,19 +39,39 @@ export function Navbar() {
     } = await supabase.auth.getUser();
     setUser(user);
     if (user) {
-      fetchProfile(user.id);
+      fetchUserName(user.id);
     }
   };
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
+  const fetchUserName = async (userId: string) => {
+    // Buscar da tabela users
+    const { data: userData } = await supabase
+      .from("users")
+      .select("name")
       .eq("id", userId)
       .single();
 
-    if (data) {
-      setProfile(data);
+    if (userData?.name) {
+      setUserName(userData.name);
+    } else {
+      // Fallback: buscar do user_metadata ou email
+      const { data: { user } } = await supabase.auth.getUser();
+      const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+      setUserName(fullName);
+      
+      // Criar registro na tabela users se não existir
+      if (user) {
+        await supabase
+          .from("users")
+          .insert({
+            id: user.id,
+            name: fullName,
+            email: user.email || '',
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+      }
     }
   };
 
@@ -126,6 +146,18 @@ export function Navbar() {
             {user ? (
               <>
                 <Link
+                  href="/dashboard"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    isActive("/dashboard")
+                      ? "bg-emerald-50 text-emerald-600 font-semibold"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Link>
+
+                <Link
                   href="/criar-anuncio"
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                     isActive("/criar-anuncio")
@@ -138,9 +170,9 @@ export function Navbar() {
                 </Link>
 
                 <Link
-                  href="/chat"
+                  href="/mensagens"
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                    isActive("/chat") || pathname?.startsWith("/chat/")
+                    isActive("/mensagens")
                       ? "bg-emerald-50 text-emerald-600 font-semibold"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
@@ -151,14 +183,14 @@ export function Navbar() {
 
                 <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                   <Link
-                    href={`/perfil/${user.id}`}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                    href="/dashboard"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-emerald-50 transition-all group"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {profile?.nome?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm group-hover:scale-110 transition-transform">
+                      {userName[0]?.toUpperCase() || "U"}
                     </div>
-                    <span className="text-sm font-medium text-gray-700">
-                      {profile?.nome || user.email?.split("@")[0]}
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-600 transition-colors">
+                      {userName}
                     </span>
                   </Link>
                   <button
@@ -221,6 +253,19 @@ export function Navbar() {
               {user ? (
                 <>
                   <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${
+                      isActive("/dashboard")
+                        ? "bg-emerald-50 text-emerald-600 font-semibold"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                    Dashboard
+                  </Link>
+
+                  <Link
                     href="/criar-anuncio"
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${
@@ -234,10 +279,10 @@ export function Navbar() {
                   </Link>
 
                   <Link
-                    href="/chat"
+                    href="/mensagens"
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${
-                      isActive("/chat") || pathname?.startsWith("/chat/")
+                      isActive("/mensagens")
                         ? "bg-emerald-50 text-emerald-600 font-semibold"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
@@ -248,16 +293,16 @@ export function Navbar() {
 
                   <div className="px-4 py-3 border-t border-gray-200 mt-2">
                     <Link
-                      href={`/perfil/${user.id}`}
+                      href="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 mb-3"
+                      className="flex items-center gap-2 mb-3 p-2 rounded-lg hover:bg-emerald-50 transition-all"
                     >
                       <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold">
-                        {profile?.nome?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
+                        {userName[0]?.toUpperCase() || "U"}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {profile?.nome || user.email?.split("@")[0]}
+                          {userName}
                         </p>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </div>

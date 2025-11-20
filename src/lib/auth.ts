@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 
 export async function signUp(email: string, password: string, fullName: string) {
+  // 1. Criar usuário no Supabase Auth
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -12,6 +13,23 @@ export async function signUp(email: string, password: string, fullName: string) 
   })
   
   if (error) throw error
+  
+  // 2. Salvar dados na tabela usuarios
+  if (data.user) {
+    const { error: insertError } = await supabase
+      .from('usuarios')
+      .insert({
+        id: data.user.id,
+        nome: fullName,
+        email: email,
+        created_at: new Date().toISOString()
+      })
+    
+    if (insertError) {
+      console.error('Erro ao salvar usuário na tabela usuarios:', insertError)
+    }
+  }
+  
   return data
 }
 
@@ -22,6 +40,30 @@ export async function signIn(email: string, password: string) {
   })
   
   if (error) throw error
+  
+  // Verificar se o usuário existe na tabela usuarios
+  if (data.user) {
+    const { data: usuarioData } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('id', data.user.id)
+      .single()
+    
+    // Se não existir, criar registro
+    if (!usuarioData) {
+      const fullName = data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'Usuário'
+      
+      await supabase
+        .from('usuarios')
+        .insert({
+          id: data.user.id,
+          nome: fullName,
+          email: data.user.email || '',
+          created_at: new Date().toISOString()
+        })
+    }
+  }
+  
   return data
 }
 
