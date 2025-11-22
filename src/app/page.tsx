@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Search, Plus, MapPin, Clock, Euro } from "lucide-react";
+import { Search, Plus, MapPin, Clock, Euro, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { Anuncio } from "@/lib/types";
 
@@ -12,6 +12,8 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [hoveredAnuncio, setHoveredAnuncio] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
     checkUser();
@@ -60,6 +62,24 @@ export default function HomePage() {
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  const handlePrevImage = (e: React.MouseEvent, anuncioId: string, totalFotos: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex(prev => ({
+      ...prev,
+      [anuncioId]: ((prev[anuncioId] || 0) - 1 + totalFotos) % totalFotos
+    }));
+  };
+
+  const handleNextImage = (e: React.MouseEvent, anuncioId: string, totalFotos: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex(prev => ({
+      ...prev,
+      [anuncioId]: ((prev[anuncioId] || 0) + 1) % totalFotos
+    }));
   };
 
   return (
@@ -147,83 +167,136 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredAnuncios.map((anuncio) => (
-              <Link
-                key={anuncio.id}
-                href={`/anuncio/${anuncio.id}`}
-                className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group"
-              >
-                {/* Imagem */}
-                <div className="relative h-48 bg-gray-200 overflow-hidden">
-                  {anuncio.fotos && anuncio.fotos.length > 0 ? (
-                    <img
-                      src={anuncio.fotos[0]}
-                      alt={anuncio.titulo}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <span className="text-4xl">📦</span>
+            {filteredAnuncios.map((anuncio) => {
+              const currentIndex = currentImageIndex[anuncio.id] || 0;
+              const totalFotos = anuncio.fotos?.length || 0;
+              const hasFotos = totalFotos > 0;
+
+              return (
+                <Link
+                  key={anuncio.id}
+                  href={`/anuncio/${anuncio.id}`}
+                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group"
+                  onMouseEnter={() => setHoveredAnuncio(anuncio.id)}
+                  onMouseLeave={() => setHoveredAnuncio(null)}
+                >
+                  {/* Imagem com Carrossel */}
+                  <div className="relative h-48 bg-gray-200 overflow-hidden">
+                    {hasFotos ? (
+                      <>
+                        <img
+                          src={anuncio.fotos[currentIndex]}
+                          alt={`${anuncio.titulo} - Foto ${currentIndex + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        
+                        {/* Botões de navegação - aparecem no hover */}
+                        {totalFotos > 1 && hoveredAnuncio === anuncio.id && (
+                          <>
+                            <button
+                              onClick={(e) => handlePrevImage(e, anuncio.id, totalFotos)}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 backdrop-blur-sm"
+                              aria-label="Foto anterior"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleNextImage(e, anuncio.id, totalFotos)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 backdrop-blur-sm"
+                              aria-label="Próxima foto"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+
+                        {/* Indicador de fotos */}
+                        {totalFotos > 1 && (
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                            {anuncio.fotos.map((_, index) => (
+                              <div
+                                key={index}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                  index === currentIndex
+                                    ? 'w-6 bg-white'
+                                    : 'w-1.5 bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Contador de fotos */}
+                        {totalFotos > 1 && (
+                          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                            {currentIndex + 1}/{totalFotos}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <span className="text-4xl">📦</span>
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
+                      {anuncio.categoria}
                     </div>
-                  )}
-                  <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                    {anuncio.categoria}
-                  </div>
-                </div>
-
-                {/* Conteúdo */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                    {anuncio.titulo}
-                  </h3>
-                  
-                  <div className="flex items-center gap-2 mb-3">
-                    <Euro className="w-5 h-5 text-emerald-600" />
-                    <span className="text-2xl font-bold text-emerald-600">
-                      {formatPrice(anuncio.preco)}
-                    </span>
                   </div>
 
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                    {anuncio.descricao}
-                  </p>
-
-                  {/* Detalhes específicos */}
-                  {anuncio.categoria === 'veiculos' && anuncio.detalhes && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
-                      {anuncio.detalhes.marca && (
-                        <span className="font-medium">{anuncio.detalhes.marca}</span>
-                      )}
-                      {anuncio.detalhes.modelo && (
-                        <>
-                          <span>•</span>
-                          <span>{anuncio.detalhes.modelo}</span>
-                        </>
-                      )}
-                      {anuncio.detalhes.ano && (
-                        <>
-                          <span>•</span>
-                          <span>{anuncio.detalhes.ano}</span>
-                        </>
-                      )}
-                      {anuncio.detalhes.quilometros && (
-                        <>
-                          <span>•</span>
-                          <span>{anuncio.detalhes.quilometros.toLocaleString()} km</span>
-                        </>
-                      )}
+                  {/* Conteúdo */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                      {anuncio.titulo}
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <Euro className="w-5 h-5 text-emerald-600" />
+                      <span className="text-2xl font-bold text-emerald-600">
+                        {formatPrice(anuncio.preco)}
+                      </span>
                     </div>
-                  )}
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatDate(anuncio.created_at)}</span>
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                      {anuncio.descricao}
+                    </p>
+
+                    {/* Detalhes específicos */}
+                    {anuncio.categoria === 'veiculos' && anuncio.detalhes && (
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
+                        {anuncio.detalhes.marca && (
+                          <span className="font-medium">{anuncio.detalhes.marca}</span>
+                        )}
+                        {anuncio.detalhes.modelo && (
+                          <>
+                            <span>•</span>
+                            <span>{anuncio.detalhes.modelo}</span>
+                          </>
+                        )}
+                        {anuncio.detalhes.ano && (
+                          <>
+                            <span>•</span>
+                            <span>{anuncio.detalhes.ano}</span>
+                          </>
+                        )}
+                        {anuncio.detalhes.quilometros && (
+                          <>
+                            <span>•</span>
+                            <span>{anuncio.detalhes.quilometros.toLocaleString()} km</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatDate(anuncio.created_at)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

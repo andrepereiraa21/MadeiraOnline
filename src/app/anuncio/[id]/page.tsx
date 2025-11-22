@@ -14,7 +14,8 @@ import {
   Mail,
   MessageCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import type { Anuncio } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export default function AnuncioDetalhePage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [enviandoMensagem, setEnviandoMensagem] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -177,6 +179,28 @@ export default function AnuncioDetalhePage() {
     }
   };
 
+  const openFullscreen = () => {
+    setFullscreenImage(true);
+  };
+
+  const closeFullscreen = () => {
+    setFullscreenImage(false);
+  };
+
+  // Navegação com teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (fullscreenImage) {
+        if (e.key === 'ArrowLeft') prevImage();
+        if (e.key === 'ArrowRight') nextImage();
+        if (e.key === 'Escape') closeFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenImage, anuncio]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -228,45 +252,54 @@ export default function AnuncioDetalhePage() {
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               {anuncio.fotos && anuncio.fotos.length > 0 ? (
                 <div className="relative">
-                  <div className="relative h-96 bg-gray-900">
+                  <div 
+                    className="relative h-96 bg-white cursor-pointer group"
+                    onClick={openFullscreen}
+                  >
                     <img
                       src={anuncio.fotos[currentImageIndex]}
                       alt={anuncio.titulo}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     
                     {anuncio.fotos.length > 1 && (
                       <>
                         <button
-                          onClick={prevImage}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            prevImage();
+                          }}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all hover:scale-110"
                         >
                           <ChevronLeft className="w-6 h-6 text-gray-800" />
                         </button>
                         <button
-                          onClick={nextImage}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            nextImage();
+                          }}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all hover:scale-110"
                         >
                           <ChevronRight className="w-6 h-6 text-gray-800" />
                         </button>
                         
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                        <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
                           {currentImageIndex + 1} / {anuncio.fotos.length}
                         </div>
                       </>
                     )}
                   </div>
                   
-                  {/* Thumbnails */}
+                  {/* Thumbnails - MOVIDAS PARA BAIXO */}
                   {anuncio.fotos.length > 1 && (
-                    <div className="flex gap-2 p-4 overflow-x-auto">
+                    <div className="flex gap-2 p-4 overflow-x-auto bg-gray-50">
                       {anuncio.fotos.map((foto, index) => (
                         <button
                           key={index}
                           onClick={() => setCurrentImageIndex(index)}
-                          className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                          className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
                             index === currentImageIndex
-                              ? 'border-emerald-600 scale-105'
+                              ? 'border-emerald-600 scale-105 shadow-lg'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
@@ -389,7 +422,7 @@ export default function AnuncioDetalhePage() {
                   </div>
 
                   {!isProprioAnuncio && (
-                    <div className="pt-4 space-y-2">
+                    <div className="pt-4">
                       <button
                         onClick={iniciarConversa}
                         disabled={enviandoMensagem}
@@ -398,13 +431,6 @@ export default function AnuncioDetalhePage() {
                         <MessageCircle className="w-5 h-5" />
                         {enviandoMensagem ? 'Abrindo...' : 'Enviar Mensagem'}
                       </button>
-                      
-                      <a
-                        href={`mailto:${vendedor.email}?subject=Interesse no anúncio: ${anuncio.titulo}`}
-                        className="block w-full bg-white border-2 border-emerald-600 text-emerald-600 text-center py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-all duration-300"
-                      >
-                        Enviar Email
-                      </a>
                     </div>
                   )}
 
@@ -436,6 +462,73 @@ export default function AnuncioDetalhePage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Fullscreen para Imagens */}
+      {fullscreenImage && anuncio?.fotos && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
+          <button
+            onClick={closeFullscreen}
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all z-10"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            <img
+              src={anuncio.fotos[currentImageIndex]}
+              alt={anuncio.titulo}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {anuncio.fotos.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-3 rounded-full transition-all"
+                >
+                  <ChevronLeft className="w-8 h-8 text-white" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-3 rounded-full transition-all"
+                >
+                  <ChevronRight className="w-8 h-8 text-white" />
+                </button>
+
+                {/* Thumbnails no fullscreen - ABAIXO DA FOTO */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-full px-4">
+                  {anuncio.fotos.map((foto, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === currentImageIndex
+                          ? 'border-emerald-500 scale-110'
+                          : 'border-white/30 hover:border-white/50'
+                      }`}
+                    >
+                      <img
+                        src={foto}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Contador de imagens - ACIMA DAS MINIATURAS */}
+                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full">
+                  {currentImageIndex + 1} / {anuncio.fotos.length}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="absolute top-4 left-4 text-white text-sm bg-black/50 px-3 py-2 rounded-full">
+            Use as setas ← → para navegar | ESC para fechar
+          </div>
+        </div>
+      )}
     </div>
   );
 }

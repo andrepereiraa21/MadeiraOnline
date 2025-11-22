@@ -11,7 +11,6 @@ interface Conversa {
   comprador_id: string;
   vendedor_id: string;
   created_at: string;
-  updated_at: string;
   anuncio?: {
     titulo: string;
     fotos: string[];
@@ -85,7 +84,7 @@ export default function MensagensPage() {
       .from('conversas')
       .select('*')
       .or(`comprador_id.eq.${user.id},vendedor_id.eq.${user.id}`)
-      .order('updated_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Erro ao buscar conversas:', error);
@@ -183,12 +182,6 @@ export default function MensagensPage() {
       console.error('Erro ao enviar mensagem:', error);
       return;
     }
-
-    // Atualizar timestamp da conversa
-    await supabase
-      .from('conversas')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', conversaSelecionada.id);
 
     setNovaMensagem("");
     fetchMensagens(conversaSelecionada.id);

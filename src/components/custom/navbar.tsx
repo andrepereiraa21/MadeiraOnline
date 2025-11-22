@@ -12,6 +12,7 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     checkUser();
@@ -21,9 +22,11 @@ export function Navbar() {
         if (event === "SIGNED_IN") {
           setUser(session?.user);
           fetchUserName(session?.user?.id);
+          fetchUnreadMessages(session?.user?.id);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setUserName("");
+          setUnreadCount(0);
         }
       }
     );
@@ -33,6 +36,18 @@ export function Navbar() {
     };
   }, []);
 
+  // Atualizar contagem de mensagens não lidas a cada 30 segundos
+  useEffect(() => {
+    if (user?.id) {
+      fetchUnreadMessages(user.id);
+      const interval = setInterval(() => {
+        fetchUnreadMessages(user.id);
+      }, 30000); // 30 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
   const checkUser = async () => {
     const {
       data: { user },
@@ -40,11 +55,12 @@ export function Navbar() {
     setUser(user);
     if (user) {
       fetchUserName(user.id);
+      fetchUnreadMessages(user.id);
     }
   };
 
   const fetchUserName = async (userId: string) => {
-    // Buscar da tabela users
+    // Buscar da tabela users o campo name (nome de usuário)
     const { data: userData } = await supabase
       .from("users")
       .select("name")
@@ -52,11 +68,12 @@ export function Navbar() {
       .single();
 
     if (userData?.name) {
+      // Usar o nome de usuário da tabela users
       setUserName(userData.name);
     } else {
-      // Fallback: buscar do user_metadata ou email
+      // Fallback: buscar do user_metadata
       const { data: { user } } = await supabase.auth.getUser();
-      const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+      const fullName = user?.user_metadata?.full_name || "Usuário";
       setUserName(fullName);
       
       // Criar registro na tabela users se não existir
@@ -72,6 +89,52 @@ export function Navbar() {
           .select()
           .single();
       }
+    }
+  };
+
+  const fetchUnreadMessages = async (userId: string) => {
+    try {
+      // Buscar conversas onde o usuário é participante
+      const { data: conversas, error: conversasError } = await supabase
+        .from("conversas")
+        .select("id, comprador_id, vendedor_id")
+        .or(`comprador_id.eq.${userId},vendedor_id.eq.${userId}`);
+
+      if (conversasError) {
+        console.error("Erro ao buscar conversas:", conversasError);
+        return;
+      }
+
+      if (!conversas || conversas.length === 0) {
+        setUnreadCount(0);
+        return;
+      }
+
+      // Para cada conversa, contar mensagens não lidas
+      let totalUnread = 0;
+
+      for (const conversa of conversas) {
+        // Determinar quem é o outro usuário (remetente das mensagens não lidas)
+        const otherUserId = conversa.comprador_id === userId 
+          ? conversa.vendedor_id 
+          : conversa.comprador_id;
+
+        // Contar mensagens não lidas nesta conversa
+        const { count, error: countError } = await supabase
+          .from("mensagens")
+          .select("*", { count: "exact", head: true })
+          .eq("conversa_id", conversa.id)
+          .eq("remetente_id", otherUserId)
+          .eq("lida", false);
+
+        if (!countError && count) {
+          totalUnread += count;
+        }
+      }
+
+      setUnreadCount(totalUnread);
+    } catch (error) {
+      console.error("Erro ao buscar mensagens não lidas:", error);
     }
   };
 
@@ -171,7 +234,7 @@ export function Navbar() {
 
                 <Link
                   href="/mensagens"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all relative ${
                     isActive("/mensagens")
                       ? "bg-emerald-50 text-emerald-600 font-semibold"
                       : "text-gray-700 hover:bg-gray-100"
@@ -179,6 +242,11 @@ export function Navbar() {
                 >
                   <MessageCircle className="w-5 h-5" />
                   Mensagens
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
 
                 <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
@@ -281,7 +349,7 @@ export function Navbar() {
                   <Link
                     href="/mensagens"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all relative ${
                       isActive("/mensagens")
                         ? "bg-emerald-50 text-emerald-600 font-semibold"
                         : "text-gray-700 hover:bg-gray-100"
@@ -289,6 +357,11 @@ export function Navbar() {
                   >
                     <MessageCircle className="w-5 h-5" />
                     Mensagens
+                    {unreadCount > 0 && (
+                      <span className="absolute top-2 left-8 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
 
                   <div className="px-4 py-3 border-t border-gray-200 mt-2">
@@ -301,10 +374,10 @@ export function Navbar() {
                         {userName[0]?.toUpperCase() || "U"}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-semibold text-gray-900">
                           {userName}
                         </p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-gray-500">Ver perfil</p>
                       </div>
                     </Link>
                     <button
